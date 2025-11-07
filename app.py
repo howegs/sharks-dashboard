@@ -8,7 +8,7 @@ import pandas as pd
 import plotly.express as px
 
 # --------------------------------------------------------------------------------------
-# 🔹 App Setup
+#  Header
 # --------------------------------------------------------------------------------------
 st.set_page_config(page_title="Team Dashboard", layout="wide")
 st.title("San Jose Sharks Performance Dashboard")
@@ -16,7 +16,50 @@ st.markdown("A simple, mobile-friendly dashboard built with Streamlit & Plotly."
 st.markdown("Data Updated: 11/05/2025")
 
 # --------------------------------------------------------------------------------------
-# 🔹 Helper Functions
+#  Background & Styling
+# --------------------------------------------------------------------------------------
+page_bg_img = """
+<style>
+[data-testid="stAppViewContainer"] {
+    background-image: url("https://news.sportslogos.net/wp-content/uploads/2016/08/Sharks-New-Logo.png");
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-position: center;
+}
+[data-testid="stAppViewContainer"]::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(15, 32, 45, 0.7);
+    z-index: 0;
+}
+[data-testid="stAppViewContainer"] > * { position: relative; z-index: 1; }
+[data-testid="stHeader"] h1 { color: #FFF; text-shadow: 1px 1px 3px #000; }
+[data-testid="stSidebar"] {
+    background-color: #006D75 !important;
+    color: #C4CED4 !important;
+}
+[data-testid="stSidebar"] input[type="text"] {
+    background-color: #003B41 !important;
+    color: #FFF !important;
+    border-radius: 8px !important;
+    border: 1px solid #E57200 !important;
+    padding: 6px 8px !important;
+}
+[data-baseweb="slider"] .st-bd { background-color: #E57200 !important; }
+[data-baseweb="slider"] [role="slider"] {
+    background-color: #E57200 !important;
+    border: 2px solid #FFF !important;
+    border-radius: 50% !important;
+}
+</style>
+"""
+st.markdown(page_bg_img, unsafe_allow_html=True)
+
+
+# --------------------------------------------------------------------------------------
+#  Helper Functions to pull in CSVs and merge them into a single DataFrame
 # --------------------------------------------------------------------------------------
 def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     """Normalize column names for consistency."""
@@ -78,7 +121,34 @@ def merge_player_data(dataframes):
     return merged_df.drop_duplicates(subset=["Player"], keep="first")
 
 # --------------------------------------------------------------------------------------
-# 🔹 Game Stats Display Function
+#  Load Data
+# --------------------------------------------------------------------------------------
+dataframes = load_all_csvs("data")
+merged_df = merge_player_data(dataframes)
+
+# Map shorthand positions to full names
+position_map = {
+    "d": "Defense",
+    "f": "Forward",
+    "lw": "Left Wing",
+    "rw": "Right Wing",
+    "c": "Captain",
+    "g": "Goalie"
+}
+
+# Prefer position data from standard_stats if available
+if "standard_stats" in dataframes:
+    primary_pos = dataframes["standard_stats"][["player", "pos"]].copy()
+else:
+    primary_pos = dataframes["team_roster"][["player", "pos"]].copy()
+
+merged_df = merged_df.drop(columns=["pos"], errors="ignore")
+merged_df = pd.merge(merged_df, primary_pos.rename(columns={"player": "Player"}), on="Player", how="left")
+merged_df["pos"] = merged_df["pos"].map(position_map).fillna(merged_df["pos"])
+
+
+# --------------------------------------------------------------------------------------
+#  Game Stats Display Function
 # --------------------------------------------------------------------------------------
 def display_game_stats(df: pd.DataFrame):
     """Display recent and full season games preserving original CSV headers."""
@@ -179,76 +249,10 @@ def display_game_stats(df: pd.DataFrame):
     st.markdown("### 📅 Full Season Game Results")
     st.dataframe(full_display, hide_index=True, use_container_width=True)
     
-# --------------------------------------------------------------------------------------
-# 🔹 Load Data
-# --------------------------------------------------------------------------------------
-dataframes = load_all_csvs("data")
-merged_df = merge_player_data(dataframes)
 
-# Map shorthand positions to full names
-position_map = {
-    "d": "Defense",
-    "f": "Forward",
-    "lw": "Left Wing",
-    "rw": "Right Wing",
-    "c": "Captain",
-    "g": "Goalie"
-}
-
-# Prefer position data from standard_stats if available
-if "standard_stats" in dataframes:
-    primary_pos = dataframes["standard_stats"][["player", "pos"]].copy()
-else:
-    primary_pos = dataframes["team_roster"][["player", "pos"]].copy()
-
-merged_df = merged_df.drop(columns=["pos"], errors="ignore")
-merged_df = pd.merge(merged_df, primary_pos.rename(columns={"player": "Player"}), on="Player", how="left")
-merged_df["pos"] = merged_df["pos"].map(position_map).fillna(merged_df["pos"])
 
 # --------------------------------------------------------------------------------------
-# 🔹 Background & Styling
-# --------------------------------------------------------------------------------------
-page_bg_img = """
-<style>
-[data-testid="stAppViewContainer"] {
-    background-image: url("https://news.sportslogos.net/wp-content/uploads/2016/08/Sharks-New-Logo.png");
-    background-size: cover;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
-    background-position: center;
-}
-[data-testid="stAppViewContainer"]::before {
-    content: "";
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(15, 32, 45, 0.7);
-    z-index: 0;
-}
-[data-testid="stAppViewContainer"] > * { position: relative; z-index: 1; }
-[data-testid="stHeader"] h1 { color: #FFF; text-shadow: 1px 1px 3px #000; }
-[data-testid="stSidebar"] {
-    background-color: #006D75 !important;
-    color: #C4CED4 !important;
-}
-[data-testid="stSidebar"] input[type="text"] {
-    background-color: #003B41 !important;
-    color: #FFF !important;
-    border-radius: 8px !important;
-    border: 1px solid #E57200 !important;
-    padding: 6px 8px !important;
-}
-[data-baseweb="slider"] .st-bd { background-color: #E57200 !important; }
-[data-baseweb="slider"] [role="slider"] {
-    background-color: #E57200 !important;
-    border: 2px solid #FFF !important;
-    border-radius: 50% !important;
-}
-</style>
-"""
-st.markdown(page_bg_img, unsafe_allow_html=True)
-
-# --------------------------------------------------------------------------------------
-# 🔹 Display Recent Games at Top
+#  Display Recent Games at Top
 # --------------------------------------------------------------------------------------
 if "game_stats" in dataframes:
     display_game_stats(dataframes["game_stats"])
@@ -256,7 +260,7 @@ else:
     st.warning("Game stats CSV not found in /data folder.")
 
 # --------------------------------------------------------------------------------------
-# 🔹 Team vs League Comparison
+#  Team vs League Comparison
 # --------------------------------------------------------------------------------------
 if "team_stats" in dataframes and "team_analytics" in dataframes:
     team_stats_df = dataframes["team_stats"]
@@ -308,7 +312,7 @@ else:
     st.warning("Missing required files: team_stats or team_analytics")
 
 # --------------------------------------------------------------------------------------
-# 🔹 Player Roster View + Filters
+#  Player Roster View + Filters
 # --------------------------------------------------------------------------------------
 if "team_roster" not in dataframes:
     st.error("Team Roster not found in /data folder.")
@@ -370,7 +374,7 @@ st.dataframe(
 )
 
 # --------------------------------------------------------------------------------------
-# 🔹 Footer
+#  Footer
 # --------------------------------------------------------------------------------------
 st.markdown("<br><br>", unsafe_allow_html=True)
 st.markdown("---")
